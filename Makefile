@@ -14,17 +14,38 @@
 
 # Makefile for building the Admission Controller webhook demo server + docker image.
 
-.DEFAULT_GOAL := docker-image
+.DEFAULT_GOAL := image
 
-IMAGE ?= stackrox/admission-controller-webhook-demo:latest
+IMAGE ?= quay.io/maxgio92/admission-controller-webhook-demo
+TAG ?= latest
 
-image/webhook-server: $(shell find . -name '*.go')
-	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o $@ ./cmd/webhook-server
+.PHONY: image
+image: image/build
 
-.PHONY: docker-image
-docker-image: image/webhook-server
-	docker build -t $(IMAGE) image/
+.PHONY: image/build
+image/build:
+	@docker build . -t $(IMAGE):$(TAG)
 
-.PHONY: push-image
-push-image: docker-image
-	docker push $(IMAGE)
+.PHONY: image/push
+image/push:
+	docker push $(IMAGE):$(TAG)
+
+.PHONY: image/dlv/build
+image/dlv/build:
+	docker build . --build-arg "GCFLAGS=all=-N -l" --tag $(IMAGE):dlv --target dlv
+
+.PHONY: image/dlv/push
+image/dlv/push: TAG := dlv
+image/dlv/push: image/push
+
+.PHONY: cluster
+cluster:
+	@kind create cluster --wait=30s || true
+
+.PHONY: debug
+debug: cluster
+	@./hack/deploy.sh "deployment/deployment.debug.yaml.template"
+
+.PHONY: deploy
+deploy: cluster
+	@./hack/deploy.sh

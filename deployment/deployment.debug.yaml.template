@@ -15,12 +15,9 @@ spec:
       labels:
         app: webhook-server
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1234
       containers:
       - name: server
-        image: quay.io/maxgio92/admission-controller-webhook-demo:latest
+        image: quay.io/maxgio92/admission-controller-webhook-demo:dlv
         imagePullPolicy: Always
         args:
         - --configmap-prefix=impersonation-shell-admin-kubeconfig-
@@ -29,6 +26,8 @@ spec:
         ports:
         - containerPort: 8443
           name: webhook-api
+        - containerPort: 2345
+          name: delve
         volumeMounts:
         - name: webhook-tls-certs
           mountPath: /run/secrets/tls
@@ -49,6 +48,10 @@ spec:
   ports:
     - port: 443
       targetPort: webhook-api
+      name: api
+    - port: 2345
+      targetPort: delve
+      name: delve
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
